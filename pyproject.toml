@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "meta-tuner"
+version = "0.1.0"
+description = ""
+authors = ["Płudowski, Dawid dawid.pludowski@gmail.com"]
+readme = "README.md"
+packages = [{ include = "meta_tuner" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
