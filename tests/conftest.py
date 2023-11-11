@@ -3,7 +3,7 @@ import pandas as pd
 from pytest import fixture
 from pathlib import Path
 
-from meta_tuner.data.datasets import PandasDatasets
+from meta_tuner.data.datasets import PandasDatasets, OpenmlPandasDatasets
 
 
 @fixture(scope="session")
@@ -32,3 +32,10 @@ def test_datasets_names(resource_path):
 @fixture(scope="function")
 def pandas_datasets(test_datasets, test_datasets_names):
     return PandasDatasets(test_datasets, test_datasets_names)
+
+
+@fixture(scope="session")
+def openml_datasets(test_datasets, test_datasets_names):
+    return OpenmlPandasDatasets(
+        test_datasets, [100, 101, 102, 103], test_datasets_names
+    )

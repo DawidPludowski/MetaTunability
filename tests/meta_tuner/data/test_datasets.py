@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from meta_tuner.data.datasets import PandasDatasets
+from meta_tuner.data.datasets import PandasDatasets, OpenmlPandasDatasets
 
 
 def test_pandas_datasets_get_int(pandas_datasets):
@@ -55,3 +55,23 @@ def test_exception_raisining_wrong_str(pandas_datasets):
 
     with pytest.raises(IndexError) as e:
         pandas_datasets[["not exists", "credit-g"]]
+
+
+def test_exception_raising_different_len(test_datasets):
+    with pytest.raises(AssertionError) as e:
+        PandasDatasets(test_datasets, ["a", "b", "c"])
+
+
+def test_exception_raising_different_len_openml(test_datasets):
+    with pytest.raises(AssertionError) as e:
+        OpenmlPandasDatasets(test_datasets, [1, 2, 3])
+
+
+def test_exception_wrong_id(openml_datasets):
+    with pytest.raises(IndexError):
+        openml_datasets.oml_loc[999]
+
+
+def test_openml_indexing(openml_datasets):
+    openml_datasets.oml_loc[101]
+    openml_datasets.oml_loc[[101, 103]]

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from pathlib import Path
-from meta_tuner.data.datasets import PandasDatasets
+from meta_tuner.data.datasets import PandasDatasets, OpenmlPandasDatasets
 from typing import List
 from openml import datasets
 
@@ -31,7 +31,7 @@ class PandasDatasetsFactory:
         return pandas_datasets
 
     @staticmethod
-    def create_from_openml(id: int | List[int]) -> PandasDatasets:
+    def create_from_openml(ids: int | List[int]) -> OpenmlPandasDatasets:
         """
         Args:
             id (int | List[int]): id (or array of ids) refering to
@@ -41,4 +41,15 @@ class PandasDatasetsFactory:
             PandasDatasets: datasets wrapper with all data specified
             by ids.
         """
-        pass
+        if isinstance(ids, int):
+            ids = [ids]
+
+        openml_datasets = datasets.get_datasets(
+            ids, download_data=True, download_qualities=False
+        )
+        openml_data = list(map(lambda x: x.get_data()[0], openml_datasets))
+        openml_names = list(map(lambda x: x.name, openml_datasets))
+
+        openml_datasets = OpenmlPandasDatasets(openml_data, ids, openml_names)
+
+        return openml_datasets
