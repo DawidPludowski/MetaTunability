@@ -1,6 +1,7 @@
 import pandas as pd
 
 from typing import List, Generator, override
+from pathlib import Path
 
 
 class PandasDatasets:
@@ -25,7 +26,7 @@ class PandasDatasets:
 
         self.__check_init()
 
-    def __check_init(self):
+    def __check_init(self) -> None:
         if self.datasets_names:
             assert len(self.datasets) == len(self.datasets_names)
 
@@ -56,6 +57,19 @@ class PandasDatasets:
     def __len__(self):
         return len(self.datasets)
 
+    def to_dir(self, dir_path: str | Path, parents: bool = False) -> None:
+        dir_path = Path(dir_path)
+
+        dir_path.mkdir(parents=parents, exist_ok=False)
+
+        if self.datasets_names is not None:
+            files_names = [f"{name}.csv" for name in self.datasets_names]
+        else:
+            files_names = [f"data_{i}.csv" for i in range(len(self.datasets))]
+
+        for df, name in zip(self.datasets, files_names):
+            df.to_csv(dir_path / name)
+
 
 class OpenmlPandasDatasets(PandasDatasets):
     """
@@ -80,7 +94,7 @@ class OpenmlPandasDatasets(PandasDatasets):
         self.__check_init()
 
     @override
-    def __check_init(self):
+    def __check_init(self) -> None:
         assert len(self.openml_ids) == len(self.datasets)
         if self.datasets_names:
             assert len(self.datasets) == len(self.datasets_names)

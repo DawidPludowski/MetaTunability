@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 
+from pathlib import Path
+
 from meta_tuner.data.datasets import PandasDatasets, OpenmlPandasDatasets
 
 
@@ -75,3 +77,25 @@ def test_exception_wrong_id(openml_datasets):
 def test_openml_indexing(openml_datasets):
     openml_datasets.oml_loc[101]
     openml_datasets.oml_loc[[101, 103]]
+
+
+def test_to_dir(pandas_datasets, new_dir):
+    pandas_datasets.to_dir(new_dir)
+
+    assert Path(new_dir).is_dir
+    assert len(list(Path.glob(new_dir, "*.csv"))) == 4
+
+
+def test_to_dir_already_exists(pandas_datasets, new_dir):
+    pandas_datasets.to_dir(new_dir)
+
+    with pytest.raises(OSError) as e:
+        pandas_datasets.to_dir(new_dir)
+
+
+def test_to_dir_without_names(pandas_datasets, new_dir):
+    pandas_datasets.datasets_names = None
+    pandas_datasets.to_dir(new_dir)
+
+    assert Path(new_dir).is_dir
+    assert len(list(Path.glob(new_dir, "data*.csv"))) == 4
