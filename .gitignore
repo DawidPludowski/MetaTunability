@@ -1,6 +1,7 @@
 # common temp files
 temp.*
 tmp.*
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
