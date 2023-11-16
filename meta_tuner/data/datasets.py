@@ -1,6 +1,7 @@
 import pandas as pd
 
 from typing import List, Generator, override
+from pathlib import Path
 
 
 class PandasDatasets:
@@ -30,8 +31,8 @@ class PandasDatasets:
             assert len(self.datasets) == len(self.datasets_names)
 
     def __iter__(self) -> Generator[pd.DataFrame, None, None]:
-        for dataset in self.datasets:
-            yield dataset
+        for i in range(len(self.datasets)):
+            yield self[i]
 
     def __getitem__(
         self, items: int | str | slice | List[int | str]
@@ -55,6 +56,19 @@ class PandasDatasets:
 
     def __len__(self):
         return len(self.datasets)
+
+    def to_dir(self, dir_path: str | Path, parents: bool = False) -> None:
+        dir_path = Path(dir_path)
+
+        dir_path.mkdir(parents=parents, exist_ok=False)
+
+        if self.datasets_names is not None:
+            files_names = [f"{name}.csv" for name in self.datasets_names]
+        else:
+            files_names = [f"data_{i}.csv" for i in range(len(self.datasets))]
+
+        for df, name in zip(self, files_names):
+            df.to_csv(dir_path / name)
 
 
 class OpenmlPandasDatasets(PandasDatasets):
@@ -120,3 +134,62 @@ class OpenmlPandasDatasets(PandasDatasets):
             List[pd.DataFrame] | pd.DataFrame: subset of datasets.
         """
         return self._IndexWrapper(self, self.openml_ids)
+
+
+class LazyPandasDatasets(PandasDatasets):
+    def __init__(
+        self,
+        datasets_paths: List[str | Path],
+        download_datasets: bool = True,
+    ) -> None:
+        datasets_path_cls = [Path(path) for path in datasets_paths]
+        self.datasets_paths = datasets_path_cls
+        self.download_datasets = download_datasets
+        self.datasets_names = [path.stem for path in self.datasets_paths]
+        self.datasets = [None for _ in self.datasets_paths]
+
+    @override
+    def __getitem__(
+        self, items: int | str | slice | List[int | str]
+    ) -> pd.DataFrame | List[pd.DataFrame]:
+        try:
+            if isinstance(items, slice):
+                return self.__evaluate_datasets(items)
+            elif isinstance(items, int):
+                return self.__evaluate_datasets(items)
+            elif isinstance(items, str):
+                idx = self.datasets_names.index(items)
+                return self.__evaluate_datasets(idx)
+            elif isinstance(items, list):
+                if isinstance(items[0], int):
+                    idxs = [self.datasets[i] for i in items]
+                    return self.__evaluate_datasets(idxs)
+                elif isinstance(items[0], str):
+                    idxs = [self.datasets[self.datasets_names.index(i)] for i in items]
+                    return self.__evaluate_datasets(idxs)
+        except IndexError:
+            raise IndexError("Provided index is out of range.")
+        except ValueError:
+            raise IndexError("Provided dataset name does not exist.")
+
+    def __evaluate_datasets(
+        self, items: List[int] | int | slice
+    ) -> pd.DataFrame | List[pd.DataFrame]:
+        if isinstance(items, int):
+            return self.__evaluate_dataset(items)
+        elif isinstance(items, slice) or isinstance(items, list):
+            if isinstance(items, slice):
+                items = list(range(items.stop)[items])
+            dfs = []
+            for item in items:
+                dfs.append(self.__evaluate_dataset(item))
+            return dfs
+
+    def __evaluate_dataset(self, items: int):
+        if self.datasets[items] is not None:
+            return self.datasets[items]
+        else:
+            df = pd.read_csv(self.datasets_paths[items])
+            if self.download_datasets:
+                self.datasets[items] = df
+            return df
