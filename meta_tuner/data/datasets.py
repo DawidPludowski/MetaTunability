@@ -73,7 +73,7 @@ class PandasDatasets:
 
 class OpenmlPandasDatasets(PandasDatasets):
     """
-    Extension to PandasWrapper. Implements refering
+    Extension to PandasDatasets. Implements refering
     to datasets by their OpenML indexes.
     """
 
@@ -137,11 +137,22 @@ class OpenmlPandasDatasets(PandasDatasets):
 
 
 class LazyPandasDatasets(PandasDatasets):
+    """
+    Extension to PandasDatasets. Allows to lazy downloading
+    datasets from directory and not storing data in memory.
+    """
+
     def __init__(
         self,
         datasets_paths: List[str | Path],
         download_datasets: bool = True,
     ) -> None:
+        """
+        Args:
+            datasets_paths (List[str  |  Path]): path to files
+            download_datasets (bool, optional): If True, datasets will
+                not be downloaded to object. Defaults to True.
+        """
         datasets_path_cls = [Path(path) for path in datasets_paths]
         self.datasets_paths = datasets_path_cls
         self.download_datasets = download_datasets
@@ -162,10 +173,9 @@ class LazyPandasDatasets(PandasDatasets):
                 return self.__evaluate_datasets(idx)
             elif isinstance(items, list):
                 if isinstance(items[0], int):
-                    idxs = [self.datasets[i] for i in items]
-                    return self.__evaluate_datasets(idxs)
+                    return self.__evaluate_datasets(items)
                 elif isinstance(items[0], str):
-                    idxs = [self.datasets[self.datasets_names.index(i)] for i in items]
+                    idxs = [self.datasets_names.index(i) for i in items]
                     return self.__evaluate_datasets(idxs)
         except IndexError:
             raise IndexError("Provided index is out of range.")
