@@ -50,9 +50,9 @@ def openml_datasets(test_datasets, test_datasets_names):
 @fixture(autouse=True)
 def run_before_and_after_tests(new_dir):
     """Fixture to execute asserts before and after a test is run"""
-    # Setup: fill with any logic you want
+    # Setup
 
     yield  # this is where the testing happens
 
-    # Teardown : fill with any logic you want
+    # Teardown
     shutil.rmtree(new_dir, ignore_errors=True)

@@ -3,7 +3,13 @@ import pandas as pd
 from openml import datasets
 from typing import List, Dict, Callable
 
-meta_extractors: Dict[str, Callable[..., float]] = {}
+from .utils import NumberOfFeatures, NumberOfInstances, NumberOfNumericFeatures
+
+meta_extractors: Dict[str, Callable[..., float]] = {
+    "NumberOfFeatures": NumberOfFeatures,
+    "NumberOfInstances": NumberOfInstances,
+    "NumberOfNumericFeatures": NumberOfNumericFeatures,
+}
 
 
 class MetaDataExtractor:
@@ -21,11 +27,10 @@ class MetaDataExtractor:
         Returns:
             dir[str, float]: metadata
         """
-        if isinstance(ids, int):
-            ids = [ids]
+        ids_ = [ids] if isinstance(ids, int) else ids
 
         dataset_list = datasets.get_datasets(
-            dataset_ids=ids, download_qualities=True, download_data=False
+            dataset_ids=ids_, download_qualities=True, download_data=False
         )
 
         qualities = [dataset.qualities for dataset in dataset_list]
@@ -33,43 +38,49 @@ class MetaDataExtractor:
         for quality in qualities:
             cls.__remove_not_allowed_meta(quality)
 
-        if len(qualities) == 1:
+        if isinstance(ids, int):
             qualities = qualities[0]
 
         return qualities
 
     @classmethod
-    def get_metadata(cls, df: pd.DataFrame) -> Dict[str, float]:
+    def get_metadata(
+        cls, X: pd.DataFrame, y: pd.DataFrame | pd.Series
+    ) -> Dict[str, float]:
         """
         Extract metadata from pandas dataframe. Metadata
         is specified in meta_extractors dictionary.
 
         Args:
-            df (pd.DataFrame): dataframe from which
-                metadata is extracted
+            X (pd.DataFrame): dataframe with features
+            y (pd.DataFrame | pd.Series): dataframe or series with target value
 
         Returns:
             dict[str, float]: metadata
         """
+
         metadata = {}
 
         for extractor_name, extractor in meta_extractors.items():
-            metadata[extractor_name] = extractor(df)
+            metadata[extractor_name] = extractor(X, y)
 
         return metadata
 
     @classmethod
     def get_missing_metadata(
-        cls, df: pd.DataFrame, metadata: Dict[str, float]
+        cls, X: pd.DataFrame, y: pd.DataFrame | pd.Series, metadata: Dict[str, float]
     ) -> Dict[str, float]:
-        """_summary_
+        """
+        Extract missing metadata.
 
         Args:
-            df (pd.DataFrame): _description_
-            metadata (dir[str, float]): _description_
+            X (pd.DataFrame): dataframe with features
+            y (pd.DataFrame | pd.Series): dataframe or series with target value
+            metadata (Dict[str, float]): metadata dictionary with missing values.
+                Both None in values and missing pairs (key, value) is filled.
 
         Returns:
-            dir[str, float]: _description_
+            Dict[str, float]: _description_
         """
         filled_metadata = {}
 
@@ -77,7 +88,7 @@ class MetaDataExtractor:
             if metadata_name in set(meta_extractors.keys()):
                 if metadata_value is None:
                     extractor = meta_extractors[metadata_name]
-                    extracted_metadata_value = extractor(df)
+                    extracted_metadata_value = extractor(X, y)
                     filled_metadata[metadata_name] = extracted_metadata_value
                 else:
                     filled_metadata[metadata_name] = metadata_value
@@ -86,7 +97,7 @@ class MetaDataExtractor:
 
         for missing_metadata_name in missing_metadata:
             extractor = meta_extractors[missing_metadata_name]
-            extracted_metadata_value = extractor(df)
+            extracted_metadata_value = extractor(X, y)
             filled_metadata[missing_metadata_name] = extracted_metadata_value
 
         return filled_metadata
