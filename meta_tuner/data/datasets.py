@@ -26,7 +26,7 @@ class PandasDatasets:
 
         self.__check_init()
 
-    def __check_init(self):
+    def __check_init(self) -> None:
         if self.datasets_names:
             assert len(self.datasets) == len(self.datasets_names)
 
@@ -94,7 +94,7 @@ class OpenmlPandasDatasets(PandasDatasets):
         self.__check_init()
 
     @override
-    def __check_init(self):
+    def __check_init(self) -> None:
         assert len(self.openml_ids) == len(self.datasets)
         if self.datasets_names:
             assert len(self.datasets) == len(self.datasets_names)
