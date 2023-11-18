@@ -2,10 +2,21 @@ import numpy as np
 
 from typing import Dict, Tuple, List, Callable
 from functools import partial
+from copy import deepcopy
 
 
 class CubeGrid:
+    """
+    Interface to generate random values based on
+    cube, i.e. when variables' values do not depends
+    on others.
+    """
+
     def __init__(self, init_seed: int = None) -> None:
+        """
+        Args:
+            init_seed (int, optional): Random seed. Defaults to None.
+        """
         self.init_seed = init_seed
 
         self.names: List[str] = []
@@ -62,14 +73,12 @@ class CubeGrid:
 
         self.names.append(name)
 
-    def pick(self) -> Dict[str, np.ndarray[any]]:
+    def pick(self) -> Dict[str, any]:
         """
-        Generate random point(s) from the grid.
-        Args:
-            size (int, optional): Number of points. Defaults to 1.
+        Generate random point from the grid.
 
         Returns:
-            Dict[str, np.ndarray[any]]: List of points from grid.
+            Dict[str, any]: List of points from grid.
         """
         random_coordinates = [rng() for rng in self.rngs]
         dict_coordinates = {
@@ -86,19 +95,48 @@ class CubeGrid:
 
 
 class ConditionalGrid:
+    """
+    Interface to generate random values from conditional
+    space, i.e. when space of one dimension depends on
+    other.
+    """
+
     def __init__(self, init_seed: int = None) -> None:
+        """
+        Args:
+            init_seed (int, optional): If provided, override init_seed
+            on each cube that is added to it. Defaults to None.
+        """
         self.init_seed = init_seed
 
         self.cubes: List[CubeGrid] = []
         self.conditions: List[Callable[..., bool]] = []
 
     def add_cube(
-        self, cube: CubeGrid, condition: Callable[..., bool] = lambda pick: True
+        self, cube: CubeGrid, condition: Callable[..., bool] = lambda _: True
     ) -> None:
-        self.cubes.append(cube)
+        """Add cube to sequence. Random values are generated in sequence
+        of adding them, starting from first.
+
+        Args:
+            cube (CubeGrid): CubeGrid object from which random values will be picked.
+            condition (Callable, optional): Condition function to determine if cube
+                will be used in picking. Funciton's input is dictionary with already generated
+                values. Function should return True or False. Defaults to lambda_:True.
+        """
+        cube_ = deepcopy(cube)
+        if self.init_seed:
+            cube_.init_seed = self.init_seed
+        self.cubes.append(cube_)
         self.conditions.append(condition)
 
-    def pick(self) -> Dict[str, np.ndarray[any]]:
+    def pick(self) -> Dict[str, any]:
+        """
+        Generate random point from the conditional grid.
+
+        Returns:
+            Dict[str, any]: List of points from grid.
+        """
         pick = {}
 
         for cube, condition in zip(self.cubes, self.conditions):
