@@ -3,9 +3,16 @@ import numpy as np
 from typing import Dict, Tuple, List, Callable
 from functools import partial
 from copy import deepcopy
+from abc import ABC, abstractmethod
 
 
-class CubeGrid:
+class RandomGrid(ABC):
+    @abstractmethod
+    def pick() -> Dict[str, any]:
+        ...
+
+
+class CubeGrid(RandomGrid):
     """
     Interface to generate random values based on
     cube, i.e. when variables' values do not depends
@@ -55,12 +62,12 @@ class CubeGrid:
                     self.rngs.append(lambda: self.__lognuniform(values[0], values[1]))
         elif space == "int":
             if isinstance(values, int):
-                self.rngs.append(lambda: np.repeat([values]))
+                self.rngs.append(lambda: values)
             if isinstance(values, list):
                 self.rngs.append(lambda: rng.integers(values[0], values[1]))
         elif space == "cat":
             if isinstance(values, str):
-                self.rngs.append(lambda: np.repeat([values]))
+                self.rngs.append(lambda: values)
             if isinstance(values, (list, tuple)):
                 self.rngs.append(lambda: rng.choice(values, replace=True))
         else:
@@ -94,7 +101,7 @@ class CubeGrid:
         return np.power(base, rng_()) / base
 
 
-class ConditionalGrid:
+class ConditionalGrid(RandomGrid):
     """
     Interface to generate random values from conditional
     space, i.e. when space of one dimension depends on
