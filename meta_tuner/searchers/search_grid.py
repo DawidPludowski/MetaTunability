@@ -2,7 +2,6 @@ import numpy as np
 
 from typing import Dict, Tuple, List, Callable
 from functools import partial
-from copy import deepcopy
 from abc import ABC, abstractmethod
 
 
@@ -28,6 +27,7 @@ class CubeGrid(RandomGrid):
 
         self.names: List[str] = []
         self.rngs: List[Callable[..., np.ndarray]] = []
+        self.rng = np.random.default_rng(self.init_seed)
 
     def add(
         self,
@@ -49,7 +49,6 @@ class CubeGrid(RandomGrid):
                 Valid values: ("uniform", "loguniform"). Defaults to "uniform".
         """
 
-        rng = np.random.default_rng(seed=self.init_seed)
         rng_len = len(self.rngs)
 
         if space == "real":
@@ -57,19 +56,19 @@ class CubeGrid(RandomGrid):
                 self.rngs.append(lambda: values)
             if isinstance(values, list):
                 if distribution == "uniform":
-                    self.rngs.append(lambda: rng.uniform(values[0], values[1]))
+                    self.rngs.append(lambda: self.rng.uniform(values[0], values[1]))
                 elif distribution == "loguniform":
                     self.rngs.append(lambda: self.__lognuniform(values[0], values[1]))
         elif space == "int":
             if isinstance(values, int):
                 self.rngs.append(lambda: values)
             if isinstance(values, list):
-                self.rngs.append(lambda: rng.integers(values[0], values[1]))
+                self.rngs.append(lambda: self.rng.integers(values[0], values[1]))
         elif space == "cat":
             if isinstance(values, str):
                 self.rngs.append(lambda: values)
             if isinstance(values, (list, tuple)):
-                self.rngs.append(lambda: rng.choice(values, replace=True))
+                self.rngs.append(lambda: self.rng.choice(values, replace=True))
         else:
             raise ValueError(
                 f'For arg "values" only "real", "int", "cat" are allowed. {values} provided'
@@ -95,10 +94,13 @@ class CubeGrid(RandomGrid):
         return dict_coordinates
 
     def __lognuniform(self, low=0, high=1, base=np.e):
-        rng = np.random.default_rng(seed=self.init_seed)
-        rng_ = partial(rng.uniform, **{"low": low, "high": high})
+        rng_ = partial(self.rng.uniform, **{"low": low, "high": high})
 
         return np.power(base, rng_()) / base
+
+    def reset_seed(self, seed: int = None) -> None:
+        new_seed = seed if seed is not None else self.init_seed
+        self.rng = np.random.default_rng(new_seed)
 
 
 class ConditionalGrid(RandomGrid):
@@ -131,9 +133,10 @@ class ConditionalGrid(RandomGrid):
                 will be used in picking. Funciton's input is dictionary with already generated
                 values. Function should return True or False. Defaults to lambda_:True.
         """
-        cube_ = deepcopy(cube)
         if self.init_seed:
+            cube_ = cube
             cube_.init_seed = self.init_seed
+            cube_.reset_seed()
         self.cubes.append(cube_)
         self.conditions.append(condition)
 
@@ -156,3 +159,8 @@ class ConditionalGrid(RandomGrid):
                 )
 
         return pick
+
+    def reset_seed(self, seed: int = None) -> None:
+        new_seed = seed if seed is not None else self.init_seed
+        for cube in self.cubes:
+            cube.reset_seed(new_seed)

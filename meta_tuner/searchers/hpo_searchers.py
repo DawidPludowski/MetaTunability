@@ -11,7 +11,12 @@ class HPOSearch(ABC):
     def __init__(self, ModelCls: type, random_grid: RandomGrid) -> None:
         self.ModelCls = ModelCls
         self.random_grid = random_grid
-        self.seach_results = {"scores": [], "hpo": []}
+        self.search_results = {
+            "scores": [],
+            "mean_score": [],
+            "std_score": [],
+            "hpo": [],
+        }
 
     @abstractmethod
     def search(
@@ -152,5 +157,7 @@ class RandomSearch(HPOSearch):
                 score = scoring(test_y, pred_y)
                 scores.append(score)
 
-            self.seach_results["scores"].append(scores)
-            self.seach_results["hpo"].append(hpo)
+            self.search_results["scores"].append(scores)
+            self.search_results["hpo"].append(hpo)
+            self.search_results["mean_score"].append(np.mean(scores))
+            self.search_results["std_score"].append(np.std(scores))
