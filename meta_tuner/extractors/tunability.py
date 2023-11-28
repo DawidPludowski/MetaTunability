@@ -6,7 +6,7 @@ from typing import List, Dict, Callable
 class TunabilityExtractor:
     def __init__(
         self,
-        search_results: List[Dict[str, any]],
+        search_results: List[Dict[str, List]],
         lowest_best: bool,
         aggregation_func: Callable[..., float] = np.mean,
     ) -> None:
@@ -20,9 +20,15 @@ class TunabilityExtractor:
 
     def __check_results(
         self,
-        search_results: List[Dict[str, any]],
+        search_results: List[Dict[str, List]],
     ) -> None:
-        pass
+        first_seach_results = search_results[0]
+        keys = list(first_seach_results.keys())
+        lens = list(map(lambda x: len(first_seach_results[x]), keys))
+
+        for key, len_ in zip(keys, lens):
+            for search_result in search_results:
+                assert len(search_result[key]) == len_
 
     def extract_default_hpo(self) -> Dict[str, any]:
         n_iter = len(self.search_results[0]["hpo"])
@@ -51,7 +57,7 @@ class TunabilityExtractor:
     def extract_gains(self):
         if self.default_idx is None or self.default_hpo is None:
             raise ValueError(
-                "Default hpo was not set yet. Please run extract_default_hpo first."
+                "Default hpo was not set yet. Please run extract_default_hpo() first."
             )
 
         default_scores = np.array(

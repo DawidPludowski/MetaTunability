@@ -67,3 +67,12 @@ def run_before_and_after_tests(new_dir):
 
     # Teardown : fill with any logic you want
     shutil.rmtree(new_dir, ignore_errors=True)
+
+
+@fixture(scope="function")
+def search_result():
+    dir_1 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [200, 99]}
+    dir_2 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [0, 10]}
+    dir_3 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [5, 4]}
+
+    return [dir_1, dir_2, dir_3]

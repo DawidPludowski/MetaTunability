@@ -3,18 +3,24 @@ import pandas as pd
 from openml import datasets
 from typing import List, Dict, Callable
 
-from .utils import NumberOfFeatures, NumberOfInstances, NumberOfNumericFeatures
-
-meta_extractors: Dict[str, Callable[..., float]] = {
-    "NumberOfFeatures": NumberOfFeatures,
-    "NumberOfInstances": NumberOfInstances,
-    "NumberOfNumericFeatures": NumberOfNumericFeatures,
-}
+from .utils import meta_extractors
 
 
 class MetaDataExtractor:
-    @classmethod
-    def get_from_openml(cls, ids: int | List[int]) -> Dict[str, float]:
+    __slots__ = {"meta_extractors"}
+
+    def __init__(self, load_default: bool = True) -> None:
+        if load_default:
+            self.meta_extractors = meta_extractors
+        else:
+            self.meta_extractors = {}
+
+    def add_extractor(
+        self, extractor_name: str, extractor: Callable[..., float]
+    ) -> None:
+        self.meta_extractors[extractor_name] = extractor
+
+    def get_from_openml(self, ids: int | List[int]) -> Dict[str, float]:
         """
         Download available metadata from OpenML. Filter out
         metadata that is not in meta_extractor keys.
@@ -25,7 +31,7 @@ class MetaDataExtractor:
             order as in ids list.
 
         Returns:
-            dir[str, float]: metadata
+            Dict[str, float]: metadata
         """
         ids_ = [ids] if isinstance(ids, int) else ids
 
@@ -36,16 +42,15 @@ class MetaDataExtractor:
         qualities = [dataset.qualities for dataset in dataset_list]
 
         for quality in qualities:
-            cls.__remove_not_allowed_meta(quality)
+            self.__remove_not_allowed_meta(quality)
 
         if isinstance(ids, int):
             qualities = qualities[0]
 
         return qualities
 
-    @classmethod
     def get_metadata(
-        cls, X: pd.DataFrame, y: pd.DataFrame | pd.Series
+        self, X: pd.DataFrame, y: pd.DataFrame | pd.Series
     ) -> Dict[str, float]:
         """
         Extract metadata from pandas dataframe. Metadata
@@ -56,19 +61,18 @@ class MetaDataExtractor:
             y (pd.DataFrame | pd.Series): dataframe or series with target value
 
         Returns:
-            dict[str, float]: metadata
+            Dict[str, float]: metadata
         """
 
         metadata = {}
 
-        for extractor_name, extractor in meta_extractors.items():
+        for extractor_name, extractor in self.meta_extractors.items():
             metadata[extractor_name] = extractor(X, y)
 
         return metadata
 
-    @classmethod
     def get_missing_metadata(
-        cls, X: pd.DataFrame, y: pd.DataFrame | pd.Series, metadata: Dict[str, float]
+        self, X: pd.DataFrame, y: pd.DataFrame | pd.Series, metadata: Dict[str, float]
     ) -> Dict[str, float]:
         """
         Extract missing metadata.
@@ -85,26 +89,25 @@ class MetaDataExtractor:
         filled_metadata = {}
 
         for metadata_name, metadata_value in metadata.items():
-            if metadata_name in set(meta_extractors.keys()):
+            if metadata_name in set(self.meta_extractors.keys()):
                 if metadata_value is None:
-                    extractor = meta_extractors[metadata_name]
+                    extractor = self.meta_extractors[metadata_name]
                     extracted_metadata_value = extractor(X, y)
                     filled_metadata[metadata_name] = extracted_metadata_value
                 else:
                     filled_metadata[metadata_name] = metadata_value
 
-        missing_metadata = set(meta_extractors.keys()) - set(metadata.keys())
+        missing_metadata = set(self.meta_extractors.keys()) - set(metadata.keys())
 
         for missing_metadata_name in missing_metadata:
-            extractor = meta_extractors[missing_metadata_name]
+            extractor = self.meta_extractors[missing_metadata_name]
             extracted_metadata_value = extractor(X, y)
             filled_metadata[missing_metadata_name] = extracted_metadata_value
 
         return filled_metadata
 
-    @classmethod
-    def __remove_not_allowed_meta(cls, metadata: Dict[str, float]) -> Dict[str, float]:
-        allowed_qualities = set(meta_extractors.keys())
+    def __remove_not_allowed_meta(self, metadata: Dict[str, float]) -> Dict[str, float]:
+        allowed_qualities = set(self.meta_extractors.keys())
         meta_to_delete = set()
         for metadata_item in metadata.keys():
             if metadata_item not in allowed_qualities:

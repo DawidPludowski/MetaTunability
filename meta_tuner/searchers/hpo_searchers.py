@@ -1,22 +1,30 @@
 import numpy as np
 import pandas as pd
+import warnings
 
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, List, Callable
+from typing import Dict, Tuple, List, Callable, Optional
 
 from meta_tuner.searchers.search_grid import RandomGrid
+from meta_tuner.searchers.early_stopping import GenericEarlyStopping, DummyEarlyStopping
+from meta_tuner.searchers.search_results import _SearchResults
 
 
-class HPOSearch(ABC):
-    def __init__(self, ModelCls: type, random_grid: RandomGrid) -> None:
+class GenericHPOSearch(ABC):
+    def __init__(
+        self,
+        ModelCls: type,
+        random_grid: RandomGrid,
+        early_stopping: Optional[GenericEarlyStopping] = None,
+    ) -> None:
         self.ModelCls = ModelCls
         self.random_grid = random_grid
-        self.search_results = {
-            "scores": [],
-            "mean_score": [],
-            "std_score": [],
-            "hpo": [],
-        }
+        self.early_stopping = early_stopping or DummyEarlyStopping()
+        self._search_results = _SearchResults()
+
+    @property
+    def search_results(self):
+        return self._search_results.get_results()
 
     @abstractmethod
     def search(
@@ -96,15 +104,20 @@ class HPOSearch(ABC):
         return y_train_, y_test_
 
 
-class RandomSearch(HPOSearch):
+class RandomSearch(GenericHPOSearch):
     """
     Implementation of random search. Contains informaiton about searching process
     in dictionary `search results`. Can be run multiple times without removing
     information about previous runs.
     """
 
-    def __init__(self, ModelCls: type, random_grid: RandomGrid) -> None:
-        super().__init__(ModelCls, random_grid)
+    def __init__(
+        self,
+        ModelCls: type,
+        random_grid: RandomGrid,
+        early_stopping: Optional[GenericEarlyStopping] = None,
+    ) -> None:
+        super().__init__(ModelCls, random_grid, early_stopping)
 
     def search(
         self,
@@ -139,7 +152,7 @@ class RandomSearch(HPOSearch):
         """
         if encode_y:
             y = super()._encode_y(y)
-        for _ in range(n_iter):
+        for i in range(n_iter):
             hpo = self.random_grid.pick()
             folds = super()._get_cv_indexes(X.shape[0], cv)
             scores = []
@@ -157,7 +170,14 @@ class RandomSearch(HPOSearch):
                 score = scoring(test_y, pred_y)
                 scores.append(score)
 
-            self.search_results["scores"].append(scores)
-            self.search_results["hpo"].append(hpo)
-            self.search_results["mean_score"].append(np.mean(scores))
-            self.search_results["std_score"].append(np.std(scores))
+            self._search_results.add("scores", scores)
+            self._search_results.add("hpo", hpo)
+            self._search_results.add("mean_score", np.mean(scores))
+            self._search_results.add("std_score", np.std(scores))
+
+            is_stop = self.early_stopping.is_stop(self.search_results)
+            if is_stop:
+                warnings.warn(
+                    f"Searching ended after {i+1} iteration due to early stopping."
+                )
+                break
