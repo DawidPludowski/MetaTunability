@@ -63,7 +63,7 @@ class CubeGrid(RandomGrid):
             if isinstance(values, int):
                 self.rngs.append(lambda: values)
             if isinstance(values, list):
-                self.rngs.append(lambda: self.rng.integers(values[0], values[1]))
+                self.rngs.append(lambda: self.rng.integers(values[0], values[1] + 1))
         elif space == "cat":
             if isinstance(values, str):
                 self.rngs.append(lambda: values)
@@ -94,9 +94,10 @@ class CubeGrid(RandomGrid):
         return dict_coordinates
 
     def __lognuniform(self, low=0, high=1, base=np.e):
-        rng_ = partial(self.rng.uniform, **{"low": low, "high": high})
+        rng_ = partial(self.rng.uniform, low=0, high=1)
+        range_ = high - low
 
-        return np.power(base, rng_()) / base
+        return (np.power(base, rng_()) - 1) / (base - 1) * range_ + low
 
     def reset_seed(self, seed: int = None) -> None:
         new_seed = seed if seed is not None else self.init_seed
@@ -131,7 +132,9 @@ class ConditionalGrid(RandomGrid):
             cube (CubeGrid): CubeGrid object from which random values will be picked.
             condition (Callable, optional): Condition function to determine if cube
                 will be used in picking. Funciton's input is dictionary with already generated
-                values. Function should return True or False. Defaults to lambda_:True.
+                values. Function should return True or False. If param will be defined in
+                multiple cubes that meet their conditions, param from latest cube will
+                be returned. Defaults to lambda_:True.
         """
         if self.init_seed:
             cube_ = cube

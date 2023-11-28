@@ -34,3 +34,10 @@ def get_generic_preprocessing() -> Pipeline:
     )
 
     return pipeline
+
+
+def wrap_model_with_preprocessing(
+    model: any, preprocessing: Pipeline = get_generic_preprocessing()
+) -> Pipeline:
+    pipeline = Pipeline([("preprocessing", preprocessing), ("model", model)])
+    return pipeline

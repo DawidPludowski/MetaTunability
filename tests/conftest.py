@@ -9,6 +9,7 @@ from meta_tuner.data.datasets import (
     OpenmlPandasDatasets,
     LazyPandasDatasets,
 )
+from meta_tuner.searchers.search_grid import CubeGrid, ConditionalGrid
 
 
 @fixture(scope="session")
@@ -67,3 +68,43 @@ def run_before_and_after_tests(new_dir):
 
     # Teardown : fill with any logic you want
     shutil.rmtree(new_dir, ignore_errors=True)
+
+
+@fixture(scope="function")
+def search_result():
+    dir_1 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [200, 99]}
+    dir_2 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [0, 10]}
+    dir_3 = {"hpo": [{"a": 1}, {"a": 2}], "mean_score": [5, 4]}
+
+    return [dir_1, dir_2, dir_3]
+
+
+@fixture(scope="function")
+def logistic_grid():
+    grid_1 = CubeGrid()
+    grid_1.add("solver", ("lbfgs", "liblinear", "newton-cg"), "cat")
+    grid_1.add("C", [0.001, 100], "real")
+
+    grid_2 = CubeGrid()
+    grid_2.add("penalty", ("l1"), "cat")
+
+    grid_3 = CubeGrid()
+    grid_3.add("penalty", ("l2"), "cat")
+
+    cond_grid = ConditionalGrid(init_seed=123)
+    cond_grid.add_cube(grid_1)
+    cond_grid.add_cube(grid_2, lambda hpo: hpo["solver"] == "liblinear")
+    cond_grid.add_cube(grid_3, lambda hpo: hpo["solver"] != "liblinear")
+
+    return cond_grid
+
+
+@fixture(scope="function")
+def naive_logistic_grid():
+    grid_1 = CubeGrid()
+    grid_1.add("solver", ("liblinear", "newton-cg"), "cat")
+
+    cond_grid = ConditionalGrid(init_seed=123)
+    cond_grid.add_cube(grid_1)
+
+    return cond_grid
