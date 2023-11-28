@@ -4,6 +4,8 @@ import warnings
 
 from abc import ABC, abstractmethod
 from typing import Dict, Tuple, List, Callable, Optional
+from copy import deepcopy
+from functools import partial
 
 from meta_tuner.searchers.search_grid import RandomGrid
 from meta_tuner.searchers.early_stopping import GenericEarlyStopping, DummyEarlyStopping
@@ -13,11 +15,11 @@ from meta_tuner.searchers.search_results import _SearchResults
 class GenericHPOSearch(ABC):
     def __init__(
         self,
-        ModelCls: type,
+        model: any,
         random_grid: RandomGrid,
         early_stopping: Optional[GenericEarlyStopping] = None,
     ) -> None:
-        self.ModelCls = ModelCls
+        self.model = model
         self.random_grid = random_grid
         self.early_stopping = early_stopping or DummyEarlyStopping()
         self._search_results = _SearchResults()
@@ -55,53 +57,18 @@ class GenericHPOSearch(ABC):
 
         return folds
 
-    def _convert_data(self, X: any, y: any):
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
-        if isinstance(y, pd.DataFrame):
-            y = y.to_numpy()
-
-        if y.shape[1] == 1:
-            y = y.ravel()
-
-        return X, y
-
-    def _prepare_X(
-        self,
-        X_train: pd.DataFrame,
-        X_test: pd.DataFrame,
-        preprocessor: Callable[..., np.ndarray] = None,
-    ) -> Tuple[np.ndarray]:
-        if preprocessor:
-            X_train_ = preprocessor.fit_transform(X_train)
-            X_test_ = preprocessor.transform(X_test)
-        else:
-            X_train_, X_test_ = X_train.to_numpy(), X_test.to_numpy()
-
-        return X_train_, X_test_
-
     def _encode_y(self, y: pd.Series) -> pd.DataFrame:
         y = y.astype("category")
         y = pd.get_dummies(y, drop_first=True)
 
         return y
 
-    def _prepare_y(
-        self,
-        y_train: pd.Series,
-        y_test: pd.Series,
-        preprocessor: Callable[..., np.ndarray] = None,
-    ) -> pd.DataFrame:
-        if preprocessor:
-            y_train_ = preprocessor.fit_transform(y_train_)
-            y_test_ = preprocessor.transform(y_test)
-        else:
-            y_train_, y_test_ = y_train.to_numpy(), y_test.to_numpy()
+    def _override_model_hpo(self, hpo: Dict[str, any]) -> None:
+        model_ = deepcopy(self.model)
+        for key, value in hpo.items():
+            setattr(model_, key, value)
 
-        if y_train_.shape[1] == 1:
-            y_train_, y_test_ = y_train_.ravel(), y_test_.ravel()
-
-        return y_train_, y_test_
+        return model_
 
 
 class RandomSearch(GenericHPOSearch):
@@ -113,11 +80,11 @@ class RandomSearch(GenericHPOSearch):
 
     def __init__(
         self,
-        ModelCls: type,
+        model: any,
         random_grid: RandomGrid,
         early_stopping: Optional[GenericEarlyStopping] = None,
     ) -> None:
-        super().__init__(ModelCls, random_grid, early_stopping)
+        super().__init__(model, random_grid, early_stopping)
 
     def search(
         self,
@@ -126,8 +93,6 @@ class RandomSearch(GenericHPOSearch):
         scoring: Callable[..., float],
         n_iter: int = 100,
         cv: int = 5,
-        preprocessor_X: Callable[..., np.ndarray] = None,
-        preprocessor_y: Callable[..., np.ndarray] = None,
         encode_y: bool = False,
     ) -> None:
         """
@@ -160,10 +125,7 @@ class RandomSearch(GenericHPOSearch):
                 train_X, test_X = X.iloc[fold[0], :], X.iloc[fold[1], :]
                 train_y, test_y = y.iloc[fold[0], :], y.iloc[fold[1], :]
 
-                train_X, test_X = super()._prepare_X(train_X, test_X, preprocessor_X)
-                train_y, test_y = super()._prepare_y(train_y, test_y, preprocessor_y)
-
-                model = self.ModelCls(**hpo)
+                model = self._override_model_hpo(hpo)
                 model.fit(train_X, train_y)
                 pred_y = model.predict(test_X)
 
