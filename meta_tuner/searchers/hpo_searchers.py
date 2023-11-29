@@ -58,7 +58,7 @@ class GenericHPOSearch(ABC):
         return folds
 
     def _encode_y(self, y: pd.Series) -> pd.DataFrame:
-        y = y.astype("category")
+        y = y.astype("category").iloc[:, 0].cat.remove_unused_categories()
         y = pd.get_dummies(y, drop_first=True)
 
         return y

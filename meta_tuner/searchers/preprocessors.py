@@ -26,7 +26,10 @@ def get_generic_preprocessing() -> Pipeline:
             (
                 "transformers",
                 make_column_transformer(
-                    (cat_pipeline, make_column_selector(dtype_include=object)),
+                    (
+                        cat_pipeline,
+                        make_column_selector(dtype_include=("object", "category")),
+                    ),
                     (num_pipeline, make_column_selector(dtype_include=np.number)),
                 ),
             )

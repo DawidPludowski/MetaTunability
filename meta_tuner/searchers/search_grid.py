@@ -136,8 +136,8 @@ class ConditionalGrid(RandomGrid):
                 multiple cubes that meet their conditions, param from latest cube will
                 be returned. Defaults to lambda_:True.
         """
+        cube_ = cube
         if self.init_seed:
-            cube_ = cube
             cube_.init_seed = self.init_seed
             cube_.reset_seed()
         self.cubes.append(cube_)
