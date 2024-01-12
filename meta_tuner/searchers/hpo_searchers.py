@@ -88,7 +88,7 @@ class RandomSearch(GenericHPOSearch):
 
     def get_best_hpo(self, min_best: bool):
         res = self._search_results.get_results()
-        best_idx = np.argmax(res["scores"] * (-1 if min_best else 1))
+        best_idx = np.argmax(res["score"] * (-1 if min_best else 1))
         return res["hpo"][best_idx]
 
     def search_holdout(

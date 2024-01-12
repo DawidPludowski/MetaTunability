@@ -1,8 +1,8 @@
-import numpy as np
-
-from typing import Dict, Tuple, List, Callable
-from functools import partial
 from abc import ABC, abstractmethod
+from functools import partial
+from typing import Callable, Dict, List, Tuple
+
+import numpy as np
 
 
 class RandomGrid(ABC):
@@ -140,6 +140,8 @@ class ConditionalGrid(RandomGrid):
             cube_ = cube
             cube_.init_seed = self.init_seed
             cube_.reset_seed()
+        else:
+            cube_ = cube
         self.cubes.append(cube_)
         self.conditions.append(condition)
 
