@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Literal, Tuple
 
 import numpy as np
 
@@ -31,7 +31,7 @@ class CubeGrid(RandomGrid):
 
     def add(
         self,
-        name: str,
+        name: Literal["real", "int", "cat"],
         values: int | str | Tuple[int | str],
         space: str = None,
         distribution: str = "uniform",

@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import pandas as pd
+from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
 
 from meta_tuner.searchers.search_grid import ConditionalGrid, CubeGrid
 
@@ -63,6 +65,47 @@ def get_predefined_logistic_regression() -> LogisticRegression:
     return model
 
 
+def get_gaussian_process_grid() -> ConditionalGrid:
+    base_grid = CubeGrid()
+    base_grid.add("n_restarts_optimizer", values=[1, 10], space="int")
+    base_grid.add("max_iter_predict", values=[10, 200], space="int")
+    base_grid.add("warm_start", values=[False, True], space="cat")
+
+    cond_grid = ConditionalGrid()
+    cond_grid.add_cube(base_grid)
+
+    return cond_grid
+
+
+def get_predefined_gaussian_classifier() -> GaussianProcessClassifier:
+    model = GaussianProcessClassifier(random_state=123)
+    return model
+
+
+def get_svc_grid() -> ConditionalGrid:
+    base_grid = CubeGrid()
+    base_grid.add("C", values=[0.001, 1000], space="real", distribution="loguniform")
+    base_grid.add("kernel", values=["linear", "poly", "rbf", "sigmoid"], space="cat")
+    base_grid.add("gamma", values=["auto", "scale"], space="cat")
+    base_grid.add("shrinking", values=[True, False], space="cat")
+    base_grid.add("probability", values=[True, False], space="cat")
+    base_grid.add("tol", values=[0.0001, 0.01], space="real")
+
+    coef_grid = CubeGrid()
+    coef_grid.add("coef0", values=[0.0001, 1], space="real")
+
+    cond_grid = ConditionalGrid()
+    cond_grid.add_cube(base_grid)
+    cond_grid.add_cube(cond_grid, lambda hpo: hpo["kernel"] in ["poly", "sigmoid"])
+
+    return cond_grid
+
+
+def get_predefined_svc() -> SVC:
+    model = SVC(random_state=123)
+    return model
+
+
 def get_datasets(path: str | Path) -> List[Tuple[pd.DataFrame, pd.DataFrame]]:
     root_path = Path(path)
 
@@ -75,10 +118,18 @@ def get_datasets(path: str | Path) -> List[Tuple[pd.DataFrame, pd.DataFrame]]:
 
         data_tuples[str(path)] = (df_train, df_test)
 
-    print(len(data_tuples.keys()))
     return data_tuples
 
 
-def put_results(path: Path, data: Dict[str, any]) -> None:
-    with open(f"{path}/results.pkl", "wb") as f:
-        pkl.dump(data, f)
+def put_results(path: Path, model: str, data: Dict[str, any]) -> None:
+    path = Path(path) / "results.pkl"
+    if path.is_file():
+        with open(path, "rb") as f:
+            obj = pkl.load(f)
+            obj[model] = data
+        with open(path, "wb") as f:
+            pkl.dump(obj, f)
+
+    else:
+        with open(path, "wb") as f:
+            pkl.dump({model: data}, f)

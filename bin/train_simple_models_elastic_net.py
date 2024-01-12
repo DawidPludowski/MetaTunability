@@ -1,7 +1,7 @@
 import warnings
 
 from loguru import logger
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score as metric
 from tqdm import tqdm
 
 from bin.utils import (
@@ -22,11 +22,9 @@ def main():
     logger.info("Start searching")
     progress_bar = tqdm((key, data_tuple) for key, data_tuple in dataloaders.items())
 
-    logger.warning(len(dataloaders.keys()))
+    logger.warning(f"Number of tasks: {len(dataloaders.keys())}")
 
     for dir_name, data_tuple in progress_bar:
-        logger.info(f"Dataset: {dir_name}")
-
         grid = get_logistic_regression_grid()
         model = get_predefined_logistic_regression()
         searcher = RandomSearch(model, grid)
@@ -40,9 +38,21 @@ def main():
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            searcher.search_holdout(train_X, train_y, test_X, test_y, roc_auc_score)
+            searcher.search_holdout(train_X, train_y, test_X, test_y, metric)
 
-        put_results(dir_name, {"best_hpo": searcher.get_best_hpo(min_best=MIN_BEST)})
+        put_results(
+            dir_name,
+            str(model.__class__),
+            {
+                "best_hpo": searcher.get_best_hpo(min_best=MIN_BEST),
+                "scoring_func": str(metric.__name__),
+                "best_score": min(searcher.search_results["score"])
+                if MIN_BEST
+                else max(searcher.search_results["score"]),
+                "early_stopping": str(searcher.early_stopping.__class__),
+                "is_min_score_best": MIN_BEST,
+            },
+        )
 
 
 if __name__ == "__main__":
