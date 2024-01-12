@@ -1,14 +1,14 @@
-import numpy as np
-import pandas as pd
 import warnings
-
 from abc import ABC, abstractmethod
-from typing import Dict, Tuple, List, Callable, Optional
 from copy import deepcopy
 from functools import partial
+from typing import Callable, Dict, List, Optional, Tuple
 
+import numpy as np
+import pandas as pd
+
+from meta_tuner.searchers.early_stopping import DummyEarlyStopping, GenericEarlyStopping
 from meta_tuner.searchers.search_grid import RandomGrid
-from meta_tuner.searchers.early_stopping import GenericEarlyStopping, DummyEarlyStopping
 from meta_tuner.searchers.search_results import _SearchResults
 
 
@@ -85,6 +85,39 @@ class RandomSearch(GenericHPOSearch):
         early_stopping: Optional[GenericEarlyStopping] = None,
     ) -> None:
         super().__init__(model, random_grid, early_stopping)
+
+    def get_best_hpo(self, min_best: bool):
+        res = self._search_results.get_results()
+        best_idx = np.argmax(res["scores"] * (-1 if min_best else 1))
+        return res["hpo"][best_idx]
+
+    def search_holdout(
+        self,
+        train_X: pd.DataFrame,
+        train_y: pd.DataFrame,
+        test_X: pd.DataFrame,
+        test_y: pd.DataFrame,
+        scoring: Callable[..., float],
+        n_iter: int = 100,
+    ) -> None:
+        for i in range(n_iter):
+            hpo = self.random_grid.pick()
+
+            model = self._override_model_hpo(hpo)
+            model.fit(train_X, train_y)
+            pred_y = model.predict(test_X)
+
+            score = scoring(test_y, pred_y)
+
+            self._search_results.add("score", score)
+            self._search_results.add("hpo", hpo)
+
+            is_stop = self.early_stopping.is_stop(self.search_results)
+            if is_stop:
+                warnings.warn(
+                    f"Searching ended after {i+1} iteration due to early stopping."
+                )
+                break
 
     def search(
         self,
