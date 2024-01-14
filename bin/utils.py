@@ -96,7 +96,7 @@ def get_svc_grid() -> ConditionalGrid:
 
     cond_grid = ConditionalGrid()
     cond_grid.add_cube(base_grid)
-    cond_grid.add_cube(cond_grid, lambda hpo: hpo["kernel"] in ["poly", "sigmoid"])
+    cond_grid.add_cube(coef_grid, lambda hpo: hpo["kernel"] in ["poly", "sigmoid"])
 
     return cond_grid
 
