@@ -57,6 +57,8 @@ def get_logistic_regression_grid(init_seed: int = None) -> ConditionalGrid:
         grid_others, lambda hpo: hpo["solver"] not in ("liblinear", "saga")
     )
 
+    cond_grid.reset_seed(123)
+
     return cond_grid
 
 
@@ -121,15 +123,15 @@ def get_datasets(path: str | Path) -> List[Tuple[pd.DataFrame, pd.DataFrame]]:
     return data_tuples
 
 
-def put_results(path: Path, model: str, data: Dict[str, any]) -> None:
-    path = Path(path) / "results.pkl"
+def put_results(path: Path, name: str, model: str, data: Dict[str, any]) -> None:
+    path = Path(path)
     if path.is_file():
         with open(path, "rb") as f:
             obj = pkl.load(f)
-            obj[model] = data
+            obj[model][name] = data
         with open(path, "wb") as f:
             pkl.dump(obj, f)
 
     else:
         with open(path, "wb") as f:
-            pkl.dump({model: data}, f)
+            pkl.dump({model: {name: data}}, f)

@@ -1,4 +1,7 @@
+import json
+import pickle as pkl
 import warnings
+from pathlib import Path
 
 from loguru import logger
 from sklearn.metrics import roc_auc_score as metric
@@ -12,7 +15,8 @@ from bin.utils import (
 )
 from meta_tuner.searchers.hpo_searchers import RandomSearch
 
-MIN_BEST = False
+MIN_BEST: bool = False
+TRUNCATE_NUMBER: int = 167
 
 
 def main():
@@ -25,6 +29,9 @@ def main():
     logger.warning(f"Number of tasks: {len(dataloaders.keys())}")
 
     for dir_name, data_tuple in progress_bar:
+        if int(dir_name[-5:]) >= TRUNCATE_NUMBER:
+            continue
+
         grid = get_logistic_regression_grid()
         model = get_predefined_logistic_regression()
         searcher = RandomSearch(model, grid)
@@ -38,21 +45,19 @@ def main():
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            searcher.search_holdout(train_X, train_y, test_X, test_y, metric)
+            searcher.search_holdout(
+                train_X, train_y, test_X, test_y, metric, n_iter=200
+            )
 
         put_results(
+            "data/mini_holdout/logistic_scores.pkl",
             dir_name,
             str(model.__class__),
-            {
-                "best_hpo": searcher.get_best_hpo(min_best=MIN_BEST),
-                "scoring_func": str(metric.__name__),
-                "best_score": min(searcher.search_results["score"])
-                if MIN_BEST
-                else max(searcher.search_results["score"]),
-                "early_stopping": str(searcher.early_stopping.__class__),
-                "is_min_score_best": MIN_BEST,
-            },
+            searcher.search_results["score"],
         )
+
+    with open("data/mini_holdout/logistic_hpo.pkl", "wb") as f:
+        pkl.dump(searcher.search_results["hpo"], f)
 
 
 if __name__ == "__main__":
