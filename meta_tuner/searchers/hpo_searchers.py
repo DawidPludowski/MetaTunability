@@ -105,9 +105,9 @@ class RandomSearch(GenericHPOSearch):
 
             model = self._override_model_hpo(hpo)
             model.fit(train_X, train_y)
-            pred_y = model.predict(test_X)
+            pred_y = model.predict_proba(test_X)
 
-            score = scoring(test_y, pred_y)
+            score = scoring(test_y, pred_y[:, 1])
 
             self._search_results.add("score", score)
             self._search_results.add("hpo", hpo)
