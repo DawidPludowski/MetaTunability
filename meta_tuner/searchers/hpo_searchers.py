@@ -38,8 +38,7 @@ class GenericHPOSearch(ABC):
         preprocessor_X: Callable[..., np.ndarray] = None,
         preprocessor_y: Callable[..., np.ndarray] = None,
         encode_y: bool = False,
-    ) -> Dict[str, any]:
-        ...
+    ) -> Dict[str, any]: ...
 
     def _get_cv_indexes(
         self, size: int, cv: int
@@ -107,7 +106,10 @@ class RandomSearch(GenericHPOSearch):
             model.fit(train_X, train_y)
             pred_y = model.predict_proba(test_X)
 
-            score = scoring(test_y, pred_y[:, 1])
+            if train_y.unique().shape[0] > 2:
+                score = scoring(test_y, pred_y, multi_class="ovo")
+            else:
+                score = scoring(test_y, pred_y[:, 1])
 
             self._search_results.add("score", score)
             self._search_results.add("hpo", hpo)

@@ -111,7 +111,7 @@ def get_predefined_svc() -> SVC:
 def get_datasets(path: str | Path) -> List[Tuple[pd.DataFrame, pd.DataFrame]]:
     root_path = Path(path)
 
-    directories = root_path.glob("*/*")
+    directories = root_path.glob("*")
     data_tuples = {}
 
     for path in directories:
